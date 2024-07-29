@@ -1,22 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
-import { React, useState, cloneElement } from "react";
+import React, { useState, cloneElement } from "react";
 import "./App.css";
-import {
-  Button,
-  Checkbox,
-  darken,
-  FormControlLabel,
-  FormGroup,
-  Box,
-  ListItemText,
-  Paper,
-  Typography,
-  useTheme,
-  Grid,
-  List,
-  ListItem,
-  alpha,
-} from "@mui/material";
+
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import { darken, alpha } from "@mui/material/styles";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormGroup from "@mui/material/FormGroup";
+import Box from "@mui/material/Box";
+import ListItemText from "@mui/material/ListItemText";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+
+import Grid from "@mui/material/Unstable_Grid2";
 
 function App() {
   const theme = useTheme();
@@ -35,18 +34,41 @@ function App() {
   );
 
   return (
-    <Box sx={{ padding: theme.spacing(3), flexGrow: 1 }}>
-      <Grid container spacing={theme.spacing(2)}>
-        <Grid item xs={12}>
+    <Box
+      sx={{
+        padding: theme.spacing(3),
+        height: "100svh",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Grid
+        container
+        spacing={theme.spacing(2)}
+        sx={{
+          flexGrow: 1,
+          minHeight: 0,
+        }}
+      >
+        <Grid item xs={12} sx={{ height: "70%" }}>
           <Box
             sx={{
               display: "flex",
               flexDirection: "row",
               width: "100%",
+              height: "100%",
               gap: theme.spacing(2),
             }}
           >
-            <Paper sx={{ flexGrow: 0.5, padding: theme.spacing(2) }}>
+            <Paper
+              sx={{
+                flexGrow: 1,
+                padding: theme.spacing(2),
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <SelectableList
                 items={fromLayouts}
                 singleSelection
@@ -60,7 +82,14 @@ function App() {
                 }}
               />
             </Paper>
-            <Paper sx={{ flexGrow: 0.5, padding: theme.spacing(2) }}>
+            <Paper
+              sx={{
+                flexGrow: 1,
+                padding: theme.spacing(2),
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               <SelectableList
                 items={toLayouts}
                 header={"To layouts:"}
@@ -75,27 +104,37 @@ function App() {
             </Paper>
           </Box>
         </Grid>
-        <Grid item xs={12}>
+        <Grid item xs={12} sx={{ height: "30%" }}>
           <Box
             sx={{
               display: "flex",
               flexDirection: "row",
               width: "100%",
+              height: "100%",
               gap: theme.spacing(2),
             }}
           >
             <Box sx={{ flexGrow: 0.3 }}>
-              <Button sx={{ width: "100%" }} variant="contained">
+              <Button
+                sx={{ width: "100%", height: "100%" }}
+                variant="contained"
+              >
                 Apply changes
               </Button>
             </Box>
-            <Paper sx={{ flexGrow: 0.7, padding: theme.spacing(2) }}>
-              <FormGroup>
+            <Paper
+              sx={{
+                flexGrow: 0.7,
+                padding: theme.spacing(2),
+                overflow: "auto",
+              }}
+            >
+              <FormGroup row>
                 {actionLables.map((label) => (
                   <FormControlLabel
                     key={label}
-                    control={<Checkbox defaultChecked={true} />}
-                    label={label}
+                    control={<Checkbox size="small" defaultChecked={true} />}
+                    label={<Typography variant="body2">{label}</Typography>}
                   ></FormControlLabel>
                 ))}
               </FormGroup>
@@ -115,7 +154,7 @@ function SelectableList({ header, items, onSelect, singleSelection }) {
     : Array(20).fill({ name: "layout.json", selected: false });
 
   return (
-    <Box>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Typography sx={{ paddingBottom: theme.spacing(2) }} variant="h6">
         {hdr}
       </Typography>
@@ -123,9 +162,18 @@ function SelectableList({ header, items, onSelect, singleSelection }) {
         sx={{
           backgroundColor: darken(theme.palette.background.default, 0.02),
           boxShadow: `inset 0 2px 4px 0 ${alpha("#000", 0.2)}`,
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
-        <Box sx={{ maxHeight: 180, overflow: "auto" }}>
+        <Box
+          sx={{
+            overflow: "auto",
+            flexGrow: 1,
+          }}
+        >
           <List dense>
             {itms.map((itm, itmIndex) =>
               cloneElement(
