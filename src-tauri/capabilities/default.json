@@ -15,16 +15,24 @@
     "shell:allow-open",
     "fs:default",
     {
-      "identifier": "fs:read-all",
-      "allow": [{ "path": "$DOWNLOAD/**" }]
-    },
-    {
-      "identifier": "fs:allow-read-text-file-lines-next",
-      "allow": [{ "path": "$DOWNLOAD/**" }]
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$DOCUMENT/GDevelop projects/**" }]
     },
     {
       "identifier": "fs:allow-read-text-file-lines",
-      "allow": [{ "path": "$DOWNLOAD/**" }]
+      "allow": [{ "path": "$DOCUMENT/GDevelop projects/**" }]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$DATA/*" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$DATA/*" }, { "path": "$APPDATA/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$APPDATA/**" }]
     }
   ]
 }

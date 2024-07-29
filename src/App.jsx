@@ -1,9 +1,20 @@
 import {
   BaseDirectory,
   readDir,
+  mkdir,
+  exists,
   readTextFileLines,
+  writeTextFile,
+  readTextFile,
 } from "@tauri-apps/plugin-fs";
-import React, { useState, cloneElement, useEffect, useCallback } from "react";
+import { appDataDir } from "@tauri-apps/api/path";
+import React, {
+  useState,
+  cloneElement,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import "./App.css";
 import useDisableRightClick from "./useDisableRightClick";
 
@@ -27,12 +38,44 @@ function App() {
   const actionLables = ["Copy objects", "Copy groups", "Copy layers"];
   const [fromLayouts, setFromLayouts] = useState([]);
   const [toLayouts, setToLayouts] = useState([]);
-  const layoutDir = "test";
+  const settingsData = useRef(null);
+
+  const fetchSettings = useCallback(async () => {
+    const appDataPath = await appDataDir();
+    const configFolderExists = await exists(appDataPath, {
+      baseDir: BaseDirectory.Data,
+    });
+
+    if (!configFolderExists) {
+      await mkdir(appDataPath, {
+        dir: BaseDirectory.Data,
+      });
+    }
+
+    const settingsPath = joinPaths(appDataPath, "settings.json");
+    const settingsExists = await exists(settingsPath, {
+      dir: BaseDirectory.AppData,
+    });
+
+    settingsData.current = await (async () => {
+      const data = settingsExists
+        ? JSON.parse(await readTextFile(settingsPath))
+        : {
+            layoutsPath: String.raw`C:\Users\MyName\Documents\GDevelop projects\MyGame\layouts`,
+          };
+
+      if (!settingsExists) {
+        await writeTextFile(settingsPath, JSON.stringify(data, null, 2));
+      }
+
+      return data;
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
-      const data = await readDir(layoutDir, {
-        baseDir: BaseDirectory.Download,
+      const data = await readDir(settingsData.current.layoutsPath, {
+        baseDir: BaseDirectory.Document,
       });
 
       const parsedData = await Promise.all(
@@ -40,15 +83,14 @@ function App() {
           .filter((file) => file.isFile && file.name.endsWith(".json"))
           .map(async (file) => {
             const lines = await readTextFileLines(
-              `${layoutDir}\\${file.name}`,
+              `${settingsData.current.layoutsPath}\\${file.name}`,
               {
-                baseDir: BaseDirectory.Download,
+                baseDir: BaseDirectory.Document,
               }
             );
 
             const nameLine = await (async () => {
               for await (const line of lines) {
-                console.log(line);
                 if (line.includes(`"name"`)) {
                   return line;
                 }
@@ -70,14 +112,22 @@ function App() {
       setFromLayouts(parsedDataSorted);
       setToLayouts(parsedDataSorted);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error(
+        `Error fetching layouts. Is your settings.json updated?`,
+        "\n",
+        "\n",
+        error
+      );
     }
   }, []);
 
   useDisableRightClick();
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    (async () => {
+      await fetchSettings();
+      await fetchData();
+    })();
+  }, [fetchSettings, fetchData]);
 
   return (
     <Box
@@ -262,6 +312,10 @@ function SelectableListItem({ primary, selected, onClick }) {
       <ListItemText primary={pri} />
     </ListItem>
   );
+}
+
+function joinPaths(...parts) {
+  return parts.join("/").replace(/\/+/g, "/");
 }
 
 export default App;
