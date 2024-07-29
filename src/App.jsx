@@ -1,4 +1,8 @@
-import { BaseDirectory, readDir } from "@tauri-apps/plugin-fs";
+import {
+  BaseDirectory,
+  readDir,
+  readTextFileLines,
+} from "@tauri-apps/plugin-fs";
 import React, { useState, cloneElement, useEffect, useCallback } from "react";
 import "./App.css";
 import useDisableRightClick from "./useDisableRightClick";
@@ -23,27 +27,48 @@ function App() {
   const actionLables = ["Copy objects", "Copy groups", "Copy layers"];
   const [fromLayouts, setFromLayouts] = useState([]);
   const [toLayouts, setToLayouts] = useState([]);
+  const layoutDir = "test";
 
   const fetchData = useCallback(async () => {
     try {
-      const data = await readDir("test", {
+      const data = await readDir(layoutDir, {
         baseDir: BaseDirectory.Download,
       });
 
-      setFromLayouts(
+      const parsedData = await Promise.all(
         data
-          .map((v) =>
-            v.isFile ? { name: v.name, selected: false } : undefined
-          )
-          .filter((v) => v != undefined)
+          .filter((file) => file.isFile && file.name.endsWith(".json"))
+          .map(async (file) => {
+            const lines = await readTextFileLines(
+              `${layoutDir}\\${file.name}`,
+              {
+                baseDir: BaseDirectory.Download,
+              }
+            );
+
+            const nameLine = await (async () => {
+              for await (const line of lines) {
+                console.log(line);
+                if (line.includes(`"name"`)) {
+                  return line;
+                }
+              }
+            })();
+
+            return {
+              name: nameLine.match(/"name":\s*"(.*?)"/)[1],
+              fileName: file.name,
+              selected: false,
+            };
+          })
       );
-      setToLayouts(
-        data
-          .map((v) =>
-            v.isFile ? { name: v.name, selected: false } : undefined
-          )
-          .filter((v) => v != undefined)
-      );
+
+      const parsedDataSorted = parsedData
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setFromLayouts(parsedDataSorted);
+      setToLayouts(parsedDataSorted);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -140,7 +165,7 @@ function App() {
                 sx={{ width: "100%", height: "100%" }}
                 variant="contained"
               >
-                Apply changes
+                Copy from ➜ to
               </Button>
             </Box>
             <Paper
