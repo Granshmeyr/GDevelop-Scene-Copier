@@ -1,6 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
-import React, { useState, cloneElement } from "react";
+import { BaseDirectory, readDir } from "@tauri-apps/plugin-fs";
+import React, { useState, cloneElement, useEffect, useCallback } from "react";
 import "./App.css";
+import useDisableRightClick from "./useDisableRightClick";
 
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -20,18 +21,38 @@ import Grid from "@mui/material/Unstable_Grid2";
 function App() {
   const theme = useTheme();
   const actionLables = ["Copy objects", "Copy groups", "Copy layers"];
-  const [fromLayouts, setFromLayouts] = useState(
-    Array.from({ length: 20 }, (_, i) => ({
-      name: `from_layout${i}.json`,
-      selected: false,
-    }))
-  );
-  const [toLayouts, setToLayouts] = useState(
-    Array.from({ length: 20 }, (_, i) => ({
-      name: `to_layout${i}.json`,
-      selected: false,
-    }))
-  );
+  const [fromLayouts, setFromLayouts] = useState([]);
+  const [toLayouts, setToLayouts] = useState([]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const data = await readDir("test", {
+        baseDir: BaseDirectory.Download,
+      });
+
+      setFromLayouts(
+        data
+          .map((v) =>
+            v.isFile ? { name: v.name, selected: false } : undefined
+          )
+          .filter((v) => v != undefined)
+      );
+      setToLayouts(
+        data
+          .map((v) =>
+            v.isFile ? { name: v.name, selected: false } : undefined
+          )
+          .filter((v) => v != undefined)
+      );
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }, []);
+
+  useDisableRightClick();
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   return (
     <Box
@@ -51,7 +72,7 @@ function App() {
           minHeight: 0,
         }}
       >
-        <Grid item xs={12} sx={{ height: "70%" }}>
+        <Grid xs={12} sx={{ height: "70%" }}>
           <Box
             sx={{
               display: "flex",
@@ -71,13 +92,13 @@ function App() {
             >
               <SelectableList
                 items={fromLayouts}
-                singleSelection
                 header={"From layout:"}
                 onSelect={(index) => {
                   setFromLayouts((fr) =>
-                    fr.map((v, frIndex) =>
-                      frIndex === index ? { ...v, selected: !v.selected } : v
-                    )
+                    fr.map((v, frIndex) => ({
+                      ...v,
+                      selected: frIndex === index,
+                    }))
                   );
                 }}
               />
@@ -104,7 +125,7 @@ function App() {
             </Paper>
           </Box>
         </Grid>
-        <Grid item xs={12} sx={{ height: "30%" }}>
+        <Grid xs={12} sx={{ height: "30%" }}>
           <Box
             sx={{
               display: "flex",
@@ -179,14 +200,6 @@ function SelectableList({ header, items, onSelect, singleSelection }) {
               cloneElement(
                 <SelectableListItem
                   onClick={() => {
-                    if (
-                      singleSelection &&
-                      itms.some((v) => v.selected) &&
-                      !itms[itmIndex].selected
-                    ) {
-                      return;
-                    }
-
                     onSelect?.(itmIndex);
                   }}
                   primary={itm.name}
