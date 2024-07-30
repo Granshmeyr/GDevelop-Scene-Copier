@@ -1,32 +1,3 @@
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
-import { parseJsonFromFile, writeStrToFileSync } from "./copyFn.js";
-
-if (require.main === module) {
-  const argv = yargs(hideBin(process.argv))
-    .option("from", {
-      alias: "f",
-      type: "string",
-      description: "From file",
-      demandOption: true,
-    })
-    .option("to", {
-      alias: "t",
-      type: "string",
-      description: "To file",
-      demandOption: true,
-    })
-    .help()
-    .alias("help", "h").argv;
-
-  const fromJson = parseJsonFromFile(argv.from);
-  const toJson = parseJsonFromFile(argv.to);
-
-  const newToJson = copyObjects(fromJson, toJson);
-  writeStrToFileSync(argv.to, JSON.stringify(newToJson, null, 2));
-}
-
 function copyObjects(fromJson, toJson) {
   const fromFolders = fromJson.objectsFolderStructure.children.filter(
     (f) => f.folderName != undefined

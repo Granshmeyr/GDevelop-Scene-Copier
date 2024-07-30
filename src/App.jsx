@@ -7,7 +7,7 @@ import {
   writeTextFile,
   readTextFile,
 } from "@tauri-apps/plugin-fs";
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, sep } from "@tauri-apps/api/path";
 import React, {
   useState,
   cloneElement,
@@ -17,6 +17,9 @@ import React, {
 } from "react";
 import "./App.css";
 import useDisableRightClick from "./useDisableRightClick";
+import copyGroups from "./copyGroups";
+import copyLayers from "./copyLayers";
+import copyObjects from "./copyObjects";
 
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -34,38 +37,53 @@ import ListItem from "@mui/material/ListItem";
 import Grid from "@mui/material/Unstable_Grid2";
 
 function App() {
+  const initialOptionState = true;
   const theme = useTheme();
-  const actionLables = ["Copy objects", "Copy groups", "Copy layers"];
+  const [scriptOptions, setScriptOptions] = useState(
+    [
+      { name: "Copy objects", fn: copyObjects },
+      { name: "Copy groups", fn: copyGroups },
+      { name: "Copy layers", fn: copyLayers },
+    ].map((option) => ({ ...option, checked: initialOptionState }))
+  );
+
   const [fromLayouts, setFromLayouts] = useState([]);
   const [toLayouts, setToLayouts] = useState([]);
   const settingsData = useRef(null);
+  const fromData = useRef(null);
 
   const fetchSettings = useCallback(async () => {
-    const appDataPath = await appDataDir();
+    const appDataPath = await appDataDir().catch((e) => console.error(e));
     const configFolderExists = await exists(appDataPath, {
       baseDir: BaseDirectory.Data,
-    });
+    }).catch((e) => console.error(e));
 
     if (!configFolderExists) {
       await mkdir(appDataPath, {
         dir: BaseDirectory.Data,
-      });
+      }).catch((e) => console.error(e));
     }
 
-    const settingsPath = joinPaths(appDataPath, "settings.json");
+    const settingsPath = createPath([appDataPath, "settings.json"]);
     const settingsExists = await exists(settingsPath, {
       dir: BaseDirectory.AppData,
-    });
+    }).catch((e) => console.error(e));
 
     settingsData.current = await (async () => {
       const data = settingsExists
-        ? JSON.parse(await readTextFile(settingsPath))
+        ? JSON.parse(
+            await readTextFile(settingsPath).catch((e) => console.error(e))
+          )
         : {
-            layoutsPath: String.raw`C:\Users\MyName\Documents\GDevelop projects\MyGame\layouts`,
+            layoutsPath: `C:/Users/MyName/Documents/GDevelop projects/MyGame/layouts`,
           };
 
+      data.layoutsPath = normalizePath(data.layoutsPath);
+
       if (!settingsExists) {
-        await writeTextFile(settingsPath, JSON.stringify(data, null, 2));
+        await writeTextFile(settingsPath, JSON.stringify(data, null, 2)).catch(
+          (e) => console.error(e)
+        );
       }
 
       return data;
@@ -76,18 +94,18 @@ function App() {
     try {
       const data = await readDir(settingsData.current.layoutsPath, {
         baseDir: BaseDirectory.Document,
-      });
+      }).catch((e) => console.error(e));
 
       const parsedData = await Promise.all(
         data
           .filter((file) => file.isFile && file.name.endsWith(".json"))
           .map(async (file) => {
             const lines = await readTextFileLines(
-              `${settingsData.current.layoutsPath}\\${file.name}`,
+              `${settingsData.current.layoutsPath}/${file.name}`,
               {
                 baseDir: BaseDirectory.Document,
               }
-            );
+            ).catch((e) => console.error(e));
 
             const nameLine = await (async () => {
               for await (const line of lines) {
@@ -95,10 +113,12 @@ function App() {
                   return line;
                 }
               }
-            })();
+            })().catch((e) => console.error(e));
 
             return {
-              name: nameLine.match(/"name":\s*"(.*?)"/)[1],
+              name: nameLine
+                ? nameLine.match(/"name":\s*"(.*?)"/)[1]
+                : `⚠️ INVALID LAYOUT FILE ${file.name}`,
               fileName: file.name,
               selected: false,
             };
@@ -170,10 +190,29 @@ function App() {
                 header={"From layout:"}
                 onSelect={(index) => {
                   setFromLayouts((fr) =>
-                    fr.map((v, frIndex) => ({
-                      ...v,
-                      selected: frIndex === index,
-                    }))
+                    fr.map((v, frIndex) => {
+                      if (frIndex === index) {
+                        (async () => {
+                          const fromPath = createPath([
+                            settingsData.current.layoutsPath,
+                            v.fileName,
+                          ]);
+
+                          fromData.current = JSON.parse(
+                            await readTextFile(fromPath).catch((e) =>
+                              console.error(e)
+                            )
+                          );
+                        })();
+
+                        return { ...v, selected: true };
+                      }
+
+                      return {
+                        ...v,
+                        selected: frIndex === index,
+                      };
+                    })
                   );
                 }}
               />
@@ -214,6 +253,41 @@ function App() {
               <Button
                 sx={{ width: "100%", height: "100%" }}
                 variant="contained"
+                onClick={async () => {
+                  if (!fromData) {
+                    return;
+                  }
+
+                  for (const s of scriptOptions) {
+                    if (!s.checked) {
+                      return;
+                    }
+
+                    const selectedTos = toLayouts.filter((v) => v.selected);
+
+                    for (const to of selectedTos) {
+                      const toPath = createPath([
+                        settingsData.current.layoutsPath,
+                        to.fileName,
+                      ]);
+                      const toStr = await readTextFile(toPath, {
+                        baseDir: BaseDirectory.Document,
+                      }).catch((e) => console.error(e));
+
+                      if (toStr == undefined) {
+                        return;
+                      }
+
+                      const toData = JSON.parse(toStr);
+                      const newToData = s.fn(fromData.current, toData);
+
+                      await writeTextFile(
+                        `${toPath}.gdsi`,
+                        JSON.stringify(newToData, null, 2)
+                      ).catch((e) => console.error(e));
+                    }
+                  }
+                }}
               >
                 Copy from ➜ to
               </Button>
@@ -226,11 +300,30 @@ function App() {
               }}
             >
               <FormGroup row>
-                {actionLables.map((label) => (
+                {scriptOptions.map((checkOpt, i) => (
                   <FormControlLabel
-                    key={label}
-                    control={<Checkbox size="small" defaultChecked={true} />}
-                    label={<Typography variant="body2">{label}</Typography>}
+                    key={i}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={checkOpt.checked}
+                        onChange={(e) => {
+                          setScriptOptions((current) =>
+                            current.map((opt) =>
+                              opt.name === checkOpt.name
+                                ? {
+                                    ...opt,
+                                    checked: e.target.checked,
+                                  }
+                                : opt
+                            )
+                          );
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2">{checkOpt.name}</Typography>
+                    }
                   ></FormControlLabel>
                 ))}
               </FormGroup>
@@ -314,8 +407,55 @@ function SelectableListItem({ primary, selected, onClick }) {
   );
 }
 
-function joinPaths(...parts) {
-  return parts.join("/").replace(/\/+/g, "/");
+function createPath(strings) {
+  const invalidStr = strings.some((s) => typeof s !== "string");
+
+  if (invalidStr) {
+    return "";
+  }
+
+  const processedStrs = strings.map((s) => normalizePath(s));
+
+  return processedStrs.join("/");
+}
+
+function normalizePath(path) {
+  if (typeof path !== "string") {
+    return "";
+  }
+
+  path = path.replace(/\\/g, "/");
+
+  const segments = path.split("/");
+  const normalizedSegments = [];
+
+  for (let segment of segments) {
+    if (segment === "." || segment === "") {
+      continue;
+    } else if (segment === "..") {
+      if (
+        normalizedSegments.length > 0 &&
+        normalizedSegments[normalizedSegments.length - 1] !== ".."
+      ) {
+        normalizedSegments.pop();
+      } else {
+        normalizedSegments.push("..");
+      }
+    } else {
+      normalizedSegments.push(segment);
+    }
+  }
+
+  let normalizedPath = normalizedSegments.join("/");
+
+  if (path.startsWith("/")) {
+    normalizedPath = "/" + normalizedPath;
+  }
+  if (path.endsWith("/") && normalizedPath !== "/") {
+    normalizedPath += "/";
+  }
+
+  return normalizedPath;
 }
 
 export default App;
