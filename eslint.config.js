@@ -1,43 +1,28 @@
-import pluginJs from "@eslint/js";
-import pluginImport from "eslint-plugin-import";
-import pluginReact from "eslint-plugin-react";
 import globals from "globals";
+import pluginJs from "@eslint/js";
+import pluginReact from "eslint-plugin-react";
+import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
+  { files: ["**/*.{js,mjs,cjs,jsx}"] },
+  { languageOptions: { globals: globals.browser } },
+  pluginJs.configs.recommended,
+  pluginReact.configs.flat.recommended,
   {
-    env: {
-      node: true,
-    },
-    files: ["**/*.{js,mjs,cjs,jsx}"],
-    languageOptions: { globals: globals.browser },
     plugins: {
-      import: pluginImport,
+      "unused-imports": pluginUnusedImports,
     },
     rules: {
-      "import/order": [
-        "error",
-        {
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-          ],
-          "newlines-between": "always",
-          alphabetize: {
-            order: "asc",
-            caseInsensitive: true,
-          },
-        },
-      ],
-      "no-unused-vars": [
+      "unused-imports/no-unused-imports": "error",
+      "unused-imports/no-unused-vars": [
         "warn",
-        { vars: "all", args: "after-used", ignoreRestSiblings: false },
+        {
+          vars: "all",
+          varsIgnorePattern: "^_",
+          args: "after-used",
+          argsIgnorePattern: "^_",
+        },
       ],
     },
   },
-  pluginJs.configs.recommended,
-  pluginReact.configs.flat.recommended,
 ];
