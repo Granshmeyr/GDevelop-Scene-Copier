@@ -3,7 +3,6 @@ import {
   readDir,
   mkdir,
   exists,
-  readTextFileLines,
   writeTextFile,
   readTextFile,
 } from "@tauri-apps/plugin-fs";
@@ -80,33 +79,27 @@ function App() {
 
   const fetchLayouts = useCallback(async () => {
     try {
-      const data = await readDir(settingsData.current.layoutsPath, {
+      const layoutFiles = await readDir(settingsData.current.layoutsPath, {
         baseDir: BaseDirectory.Document,
       });
 
       const parsedData = await Promise.all(
-        data
+        layoutFiles
           .filter((file) => file.isFile && file.name.endsWith(".json"))
           .map(async (file) => {
-            const lines = await readTextFileLines(
-              `${settingsData.current.layoutsPath}/${file.name}`,
-              {
-                baseDir: BaseDirectory.Document,
-              }
+            const data = JSON.parse(
+              await readTextFile(
+                `${settingsData.current.layoutsPath}/${file.name}`,
+                {
+                  baseDir: BaseDirectory.Document,
+                }
+              )
             );
 
-            const nameLine = await (async () => {
-              for await (const line of lines) {
-                if (line.includes(`"name"`)) {
-                  return line;
-                }
-              }
-            })();
+            const nameLine = data.name;
 
             return {
-              name: nameLine
-                ? nameLine.match(/"name":\s*"(.*?)"/)[1]
-                : `⚠️ INVALID LAYOUT FILE ${file.name}`,
+              name: nameLine ? nameLine : `⚠️ INVALID LAYOUT FILE ${file.name}`,
               fileName: file.name,
               selected: false,
             };
@@ -240,8 +233,13 @@ function App() {
                 sx={{ width: "100%", height: "100%" }}
                 variant="contained"
                 onClick={async () => {
-                  if (!fromData) {
-                    return;
+                  if (fromData.current == null) {
+                    const fromPath = createPath([
+                      settingsData.current.layoutsPath,
+                      fromLayouts.find((fr) => fr.selected).fileName,
+                    ]);
+
+                    fromData.current = JSON.parse(await readTextFile(fromPath));
                   }
 
                   for (const s of scriptOptions) {
@@ -268,11 +266,13 @@ function App() {
                       const newToData = s.fn(fromData.current, toData);
 
                       await writeTextFile(
-                        `${toPath}.gdsi`,
+                        `${toPath}`,
                         JSON.stringify(newToData, null, 2)
                       );
                     }
                   }
+
+                  fromData.current = null;
                 }}
               >
                 Copy from ➜ to
