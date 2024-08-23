@@ -1,7 +1,7 @@
 {
   "productName": "gdevelop-scene-copier",
   "version": "0.0.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.grindle.gdevelopSceneCopier",
   "build": {
     "beforeDevCommand": "yarn dev",
     "devUrl": "http://localhost:1420",
