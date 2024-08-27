@@ -1,22 +1,18 @@
 function copyLayers(fromJson, toJson) {
   const { processedToLayers, newlyAppendedLayers } = toJson.layers.reduce(
     (acc, l) => {
-      if (l.name === "") {
-        return acc;
-      }
-
-      // Check for inherited layers "__foobar" that need to be updated
-      if (l.name.startsWith("__")) {
+      // Check for prefixed layers that need to be updated
+      if (/^♻️/.test(l.name)) {
         const updatedLayer = fromJson.layers.find(
-          (f) => f.name === l.name || f.name === l.name.slice(2)
+          (f) => f.name === l.name || f.name === removePrefix(l.name, "♻️")
         );
 
         if (updatedLayer != undefined) {
           acc.processedToLayers.push({
             ...updatedLayer,
-            name: updatedLayer.name.startsWith("__")
+            name: /^♻️/.test(updatedLayer.name)
               ? updatedLayer.name
-              : `__${updatedLayer.name}`,
+              : `♻️${updatedLayer.name}`,
           });
 
           acc.newlyAppendedLayers.splice(
@@ -35,7 +31,7 @@ function copyLayers(fromJson, toJson) {
       // Check for manually defined layers "foobar" that need to be preserved
       const overwrittenLayer = fromJson.layers.find(
         (f) =>
-          (f.name.startsWith("__") && f.name.slice(2) === l.name) ||
+          (/^♻️/.test(f.name) && removePrefix(f.name, "♻️") === l.name) ||
           f.name === l.name
       );
 
@@ -52,10 +48,12 @@ function copyLayers(fromJson, toJson) {
       return acc;
     },
     {
-      processedToLayers: [toJson.layers.find((l) => l.name === "")],
+      processedToLayers: [],
       newlyAppendedLayers: [...fromJson.layers.filter((l) => l.name !== "")],
     }
   );
+
+  console.log(fromJson.layers);
 
   return {
     ...toJson,
@@ -63,10 +61,15 @@ function copyLayers(fromJson, toJson) {
       ...processedToLayers,
       ...newlyAppendedLayers.map((l) => ({
         ...l,
-        name: l.name.startsWith("__") ? l.name : `__${l.name}`,
+        name: /^♻️/.test(l.name) ? l.name : `♻️${l.name}`,
       })),
     ],
   };
 }
 
 export default copyLayers;
+
+function removePrefix(str, prefix) {
+  const regex = new RegExp(`^${prefix}`);
+  return str.replace(regex, "");
+}
