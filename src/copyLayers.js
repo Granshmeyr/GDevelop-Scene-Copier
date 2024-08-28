@@ -1,14 +1,17 @@
 function copyLayers(fromJson, toJson) {
   const prefix = "♻️";
 
-  const { processedToLayers, newlyAppendedLayers } = toJson.layers.reduce(
+  const { remainingFromLayers, processedToLayers } = toJson.layers.reduce(
     (acc, t) => {
       // Check for prefixed layers that need to be updated
       if (isPrefixed(t.name, prefix)) {
         const updatedLayer = fromJson.layers.find(
-          (f) => f.name === t.name || f.name === removePrefix(t.name, prefix)
+          (f) =>
+            (f.name === t.name || f.name === removePrefix(t.name, prefix)) &&
+            f.name !== ""
         );
 
+        // Don't append layer if already defined
         if (updatedLayer != undefined) {
           acc.processedToLayers.push({
             ...updatedLayer,
@@ -17,8 +20,8 @@ function copyLayers(fromJson, toJson) {
               : `${prefix}${updatedLayer.name}`,
           });
 
-          acc.newlyAppendedLayers.splice(
-            acc.newlyAppendedLayers.findIndex(
+          acc.remainingFromLayers.splice(
+            acc.remainingFromLayers.findIndex(
               (v) => v.name === updatedLayer.name
             ),
             1
@@ -33,14 +36,14 @@ function copyLayers(fromJson, toJson) {
       // Check for manually defined layers "foobar" that need to be preserved
       const overwrittenLayer = fromJson.layers.find(
         (f) =>
-          (isPrefixed(f.name, prefix) &&
-            removePrefix(f.name, prefix) === t.name) ||
-          (f.name === t.name && f.name !== "")
+          (f.name === t.name || removePrefix(f.name, prefix) === t.name) &&
+          f.name !== ""
       );
 
+      // Don't append layer if already defined
       if (overwrittenLayer != undefined) {
-        acc.newlyAppendedLayers.splice(
-          acc.newlyAppendedLayers.findIndex(
+        acc.remainingFromLayers.splice(
+          acc.remainingFromLayers.findIndex(
             (v) => v.name === overwrittenLayer.name
           ),
           1
@@ -51,16 +54,32 @@ function copyLayers(fromJson, toJson) {
       return acc;
     },
     {
+      remainingFromLayers: [...fromJson.layers],
       processedToLayers: [],
-      newlyAppendedLayers: [...fromJson.layers.filter((l) => l.name !== "")],
     }
   );
+
+  const preAppendLayers = (() => {
+    const baseIndex = remainingFromLayers.findIndex((f) => f.name === "");
+
+    return remainingFromLayers.filter((_, i) => i < baseIndex);
+  })();
+
+  const postAppendLayers = (() => {
+    const baseIndex = remainingFromLayers.findIndex((f) => f.name === "");
+
+    return remainingFromLayers.filter((_, i) => i > baseIndex);
+  })();
 
   return {
     ...toJson,
     layers: [
+      ...preAppendLayers.map((l) => ({
+        ...l,
+        name: isPrefixed(l.name, prefix) ? l.name : `${prefix}${l.name}`,
+      })),
       ...processedToLayers,
-      ...newlyAppendedLayers.map((l) => ({
+      ...postAppendLayers.map((l) => ({
         ...l,
         name: isPrefixed(l.name, prefix) ? l.name : `${prefix}${l.name}`,
       })),
