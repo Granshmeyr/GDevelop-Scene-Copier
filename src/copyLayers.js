@@ -1,18 +1,20 @@
 function copyLayers(fromJson, toJson) {
+  const prefix = "♻️";
+
   const { processedToLayers, newlyAppendedLayers } = toJson.layers.reduce(
-    (acc, l) => {
+    (acc, t) => {
       // Check for prefixed layers that need to be updated
-      if (/^♻️/.test(l.name)) {
+      if (isPrefixed(t.name, prefix)) {
         const updatedLayer = fromJson.layers.find(
-          (f) => f.name === l.name || f.name === removePrefix(l.name, "♻️")
+          (f) => f.name === t.name || f.name === removePrefix(t.name, prefix)
         );
 
         if (updatedLayer != undefined) {
           acc.processedToLayers.push({
             ...updatedLayer,
-            name: /^♻️/.test(updatedLayer.name)
+            name: isPrefixed(updatedLayer.name, prefix)
               ? updatedLayer.name
-              : `♻️${updatedLayer.name}`,
+              : `${prefix}${updatedLayer.name}`,
           });
 
           acc.newlyAppendedLayers.splice(
@@ -22,7 +24,7 @@ function copyLayers(fromJson, toJson) {
             1
           );
         } else {
-          acc.processedToLayers.push(l);
+          acc.processedToLayers.push(t);
         }
 
         return acc;
@@ -31,8 +33,9 @@ function copyLayers(fromJson, toJson) {
       // Check for manually defined layers "foobar" that need to be preserved
       const overwrittenLayer = fromJson.layers.find(
         (f) =>
-          (/^♻️/.test(f.name) && removePrefix(f.name, "♻️") === l.name) ||
-          f.name === l.name
+          (isPrefixed(f.name, prefix) &&
+            removePrefix(f.name, prefix) === t.name) ||
+          (f.name === t.name && f.name !== "")
       );
 
       if (overwrittenLayer != undefined) {
@@ -44,7 +47,7 @@ function copyLayers(fromJson, toJson) {
         );
       }
 
-      acc.processedToLayers.push(l);
+      acc.processedToLayers.push(t);
       return acc;
     },
     {
@@ -53,15 +56,13 @@ function copyLayers(fromJson, toJson) {
     }
   );
 
-  console.log(fromJson.layers);
-
   return {
     ...toJson,
     layers: [
       ...processedToLayers,
       ...newlyAppendedLayers.map((l) => ({
         ...l,
-        name: /^♻️/.test(l.name) ? l.name : `♻️${l.name}`,
+        name: isPrefixed(l.name, prefix) ? l.name : `${prefix}${l.name}`,
       })),
     ],
   };
@@ -72,4 +73,8 @@ export default copyLayers;
 function removePrefix(str, prefix) {
   const regex = new RegExp(`^${prefix}`);
   return str.replace(regex, "");
+}
+
+function isPrefixed(str, prefix) {
+  return new RegExp(`^${prefix}`).test(str);
 }
