@@ -1,30 +1,48 @@
+import { isPrefixed, prefix } from "./common";
+
 function copyObjects(fromJson, toJson) {
+  // Collect from folders not marked as inherited
   const fromFolders = fromJson.objectsFolderStructure.children
-    .filter((f) => f.folderName != undefined && !/^♻️/.test(f.folderName))
+    .filter(
+      (f) => f.folderName != undefined && !isPrefixed(f.folderName, prefix)
+    )
     .map((f) => ({
       ...f,
-      folderName: `♻️${f.folderName}`,
+      folderName: `${prefix}${f.folderName}`,
     }));
 
+  // Collect folders marked as inherited
   const invalidFromFolders = fromJson.objectsFolderStructure.children.filter(
-    (f) => f.folderName != undefined && /^♻️/.test(f.folderName)
+    (f) => f.folderName != undefined && isPrefixed(f.folderName, prefix)
   );
 
+  // Collect fromObjs that are inherited
   const invalidFromObjNames = invalidFromFolders
     .reduce((acc, f) => {
       return [...acc, getFolderObjNamesRecursive(f.children)];
     }, [])
     .flat();
 
-  const toObjNames = getFolderObjNamesRecursive(
-    toJson.objectsFolderStructure.children
+  // Collect toFolders that are/were not copied
+  const nonCopiedToFolders = toJson.objectsFolderStructure.children.filter(
+    (t) =>
+      t.folderName != undefined &&
+      !fromFolders.some((f) => f.folderName === t.folderName)
   );
 
+  // Collect toObj names that are/were not copied
+  const toObjNamesInNonInheritedFolders = nonCopiedToFolders
+    .reduce((acc, t) => {
+      return [...acc, getFolderObjNamesRecursive(t.children)];
+    }, [])
+    .flat();
+
+  // Filter out inherited objs and pre-existing objs from to-be-copied objs
   const fromObjsProcessed = fromJson.objects.filter((f) => {
     if (
       /^⚠️/.test(f.name) ||
       invalidFromObjNames.includes(f.name) ||
-      toObjNames.includes(f.name)
+      toObjNamesInNonInheritedFolders.includes(f.name)
     ) {
       return false;
     }
@@ -32,24 +50,9 @@ function copyObjects(fromJson, toJson) {
     return true;
   });
 
-  const nonCopiedToFolders = toJson.objectsFolderStructure.children.filter(
-    (t) =>
-      t.folderName != undefined &&
-      !fromFolders.some((f) => f.folderName === t.folderName)
-  );
-
-  const toObjNamesDefinedOutsideCopiedFolder = nonCopiedToFolders
-    .reduce((acc, t) => {
-      return [...acc, getFolderObjNamesRecursive(t.children)];
-    }, [])
-    .flat();
-
   const fromFoldersProcessed = fromFolders.map((f) => ({
     ...f,
-    children: filterObjsWithName(
-      f.children,
-      toObjNamesDefinedOutsideCopiedFolder
-    ),
+    children: filterObjsWithName(f.children, toObjNamesInNonInheritedFolders),
   }));
 
   const toFoldersProcessed = toJson.objectsFolderStructure.children.filter(
@@ -62,9 +65,26 @@ function copyObjects(fromJson, toJson) {
     }
   );
 
+  const toObjNamesNotInFolder = toJson.objectsFolderStructure.children.reduce(
+    (acc, t) => {
+      if (t.folderName == undefined) {
+        acc = [...acc, t.objectName];
+      }
+
+      return acc;
+    },
+    []
+  );
+
+  const toObjsProcessed = toJson.objects.filter(
+    (t) =>
+      toObjNamesInNonInheritedFolders.includes(t.name) ||
+      toObjNamesNotInFolder.includes(t.name)
+  );
+
   return {
     ...toJson,
-    objects: [...toJson.objects, ...fromObjsProcessed],
+    objects: [...toObjsProcessed, ...fromObjsProcessed],
     objectsFolderStructure: {
       folderName: "__ROOT",
       children: [...toFoldersProcessed, ...fromFoldersProcessed],

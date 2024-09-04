@@ -1,6 +1,6 @@
-function copyLayers(fromJson, toJson) {
-  const prefix = "♻️";
+import { removePrefix, isPrefixed, prefix } from "./common";
 
+function copyLayers(fromJson, toJson) {
   const { remainingFromLayers, processedToLayers } = toJson.layers.reduce(
     (acc, t) => {
       // Check for prefixed layers that need to be updated
@@ -88,12 +88,3 @@ function copyLayers(fromJson, toJson) {
 }
 
 export default copyLayers;
-
-function removePrefix(str, prefix) {
-  const regex = new RegExp(`^${prefix}`);
-  return str.replace(regex, "");
-}
-
-function isPrefixed(str, prefix) {
-  return new RegExp(`^${prefix}`).test(str);
-}
