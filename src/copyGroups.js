@@ -1,3 +1,5 @@
+import { nonInheritedPrefix, isPrefixed } from "./common";
+
 function copyGroups(fromJson, toJson) {
   const newToGroups = (() => {
     const { updatedToGroups, toAppendGroups } = toJson.objectsGroups.reduce(
@@ -20,7 +22,7 @@ function copyGroups(fromJson, toJson) {
             ...existingGroup.objects.filter(
               (existingObj) =>
                 !t.objects.some((t) => t.name === existingObj.name) &&
-                !existingObj.name.startsWith("__")
+                !isPrefixed(existingObj.name, nonInheritedPrefix)
             ),
           ],
         };
@@ -35,13 +37,21 @@ function copyGroups(fromJson, toJson) {
         updatedToGroups: [],
         toAppendGroups: fromJson.objectsGroups.map((f) => ({
           ...f,
-          objects: f.objects.filter((o) => !o.name.startsWith("__")),
+          objects: f.objects.filter(
+            (o) => !isPrefixed(o.name, nonInheritedPrefix)
+          ),
         })),
       }
     );
 
     return [...updatedToGroups, ...toAppendGroups];
   })();
+
+  console.log(
+    fromJson.objectsGroups.map((f) =>
+      f.objects.filter((o) => !isPrefixed(o.name, nonInheritedPrefix))
+    )
+  );
 
   return {
     ...toJson,

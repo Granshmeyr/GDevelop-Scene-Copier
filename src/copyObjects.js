@@ -1,19 +1,21 @@
-import { isPrefixed, prefix } from "./common";
+import { isPrefixed, inheritedPrefix, nonInheritedPrefix } from "./common";
 
 function copyObjects(fromJson, toJson) {
   // Collect from folders not marked as inherited
   const fromFolders = fromJson.objectsFolderStructure.children
     .filter(
-      (f) => f.folderName != undefined && !isPrefixed(f.folderName, prefix)
+      (f) =>
+        f.folderName != undefined && !isPrefixed(f.folderName, inheritedPrefix)
     )
     .map((f) => ({
       ...f,
-      folderName: `${prefix}${f.folderName}`,
+      folderName: `${inheritedPrefix}${f.folderName}`,
     }));
 
   // Collect folders marked as inherited
   const invalidFromFolders = fromJson.objectsFolderStructure.children.filter(
-    (f) => f.folderName != undefined && isPrefixed(f.folderName, prefix)
+    (f) =>
+      f.folderName != undefined && isPrefixed(f.folderName, inheritedPrefix)
   );
 
   // Collect fromObjs that are inherited
@@ -40,7 +42,7 @@ function copyObjects(fromJson, toJson) {
   // Filter out inherited objs and pre-existing objs from to-be-copied objs
   const fromObjsProcessed = fromJson.objects.filter((f) => {
     if (
-      /^⚠️/.test(f.name) ||
+      isPrefixed(f.name, nonInheritedPrefix) ||
       invalidFromObjNames.includes(f.name) ||
       toObjNamesInNonInheritedFolders.includes(f.name)
     ) {

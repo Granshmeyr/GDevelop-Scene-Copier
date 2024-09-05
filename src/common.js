@@ -1,4 +1,5 @@
-export const prefix = "♻️";
+export const inheritedPrefix = "♻️";
+export const nonInheritedPrefix = "⚠️";
 
 export function removePrefix(str, prefix) {
   const regex = new RegExp(`^${prefix}`);

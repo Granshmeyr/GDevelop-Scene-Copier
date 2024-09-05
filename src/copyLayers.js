@@ -1,13 +1,14 @@
-import { removePrefix, isPrefixed, prefix } from "./common";
+import { removePrefix, isPrefixed, inheritedPrefix } from "./common";
 
 function copyLayers(fromJson, toJson) {
   const { remainingFromLayers, processedToLayers } = toJson.layers.reduce(
     (acc, t) => {
       // Check for prefixed layers that need to be updated
-      if (isPrefixed(t.name, prefix)) {
+      if (isPrefixed(t.name, inheritedPrefix)) {
         const updatedLayer = fromJson.layers.find(
           (f) =>
-            (f.name === t.name || f.name === removePrefix(t.name, prefix)) &&
+            (f.name === t.name ||
+              f.name === removePrefix(t.name, inheritedPrefix)) &&
             f.name !== ""
         );
 
@@ -15,9 +16,9 @@ function copyLayers(fromJson, toJson) {
         if (updatedLayer != undefined) {
           acc.processedToLayers.push({
             ...updatedLayer,
-            name: isPrefixed(updatedLayer.name, prefix)
+            name: isPrefixed(updatedLayer.name, inheritedPrefix)
               ? updatedLayer.name
-              : `${prefix}${updatedLayer.name}`,
+              : `${inheritedPrefix}${updatedLayer.name}`,
           });
 
           acc.remainingFromLayers.splice(
@@ -36,7 +37,8 @@ function copyLayers(fromJson, toJson) {
       // Check for manually defined layers "foobar" that need to be preserved
       const overwrittenLayer = fromJson.layers.find(
         (f) =>
-          (f.name === t.name || removePrefix(f.name, prefix) === t.name) &&
+          (f.name === t.name ||
+            removePrefix(f.name, inheritedPrefix) === t.name) &&
           f.name !== ""
       );
 
@@ -76,12 +78,16 @@ function copyLayers(fromJson, toJson) {
     layers: [
       ...preAppendLayers.map((l) => ({
         ...l,
-        name: isPrefixed(l.name, prefix) ? l.name : `${prefix}${l.name}`,
+        name: isPrefixed(l.name, inheritedPrefix)
+          ? l.name
+          : `${inheritedPrefix}${l.name}`,
       })),
       ...processedToLayers,
       ...postAppendLayers.map((l) => ({
         ...l,
-        name: isPrefixed(l.name, prefix) ? l.name : `${prefix}${l.name}`,
+        name: isPrefixed(l.name, inheritedPrefix)
+          ? l.name
+          : `${inheritedPrefix}${l.name}`,
       })),
     ],
   };
