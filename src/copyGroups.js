@@ -7,7 +7,7 @@ import * as Types from "./type";
  *
  * @param {Types.LayoutJson} fromJson - The source JSON object to copy groups from.
  * @param {Types.LayoutJson} toJson - The destination JSON object to copy groups to.
- * @returns {void}
+ * @returns {Types.LayoutJson}
  */
 function copyGroups(fromJson, toJson) {
   const newToGroups = (() => {
@@ -55,12 +55,6 @@ function copyGroups(fromJson, toJson) {
 
     return [...updatedToGroups, ...toAppendGroups];
   })();
-
-  console.log(
-    fromJson.objectsGroups.map((f) =>
-      f.objects.filter((o) => !isPrefixed(o.name, nonInheritedPrefix))
-    )
-  );
 
   return {
     ...toJson,

@@ -7,7 +7,7 @@ import * as Types from "./type";
  *
  * @param {Types.LayoutJson} fromJson - The source JSON object to copy layers from.
  * @param {Types.LayoutJson} toJson - The destination JSON object to copy layers to.
- * @returns {void}
+ * @returns {Types.LayoutJson}
  */
 function copyLayers(fromJson, toJson) {
   const { remainingFromLayers, processedToLayers } = toJson.layers.reduce(

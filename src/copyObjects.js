@@ -7,7 +7,7 @@ import * as Types from "./type";
  *
  * @param {Types.LayoutJson} fromJson - The source JSON object to copy objects from.
  * @param {Types.LayoutJson} toJson - The destination JSON object to copy objects to.
- * @returns {void}
+ * @returns {Types.LayoutJson}
  */
 function copyObjects(fromJson, toJson) {
   // Collect from folders not marked as inherited

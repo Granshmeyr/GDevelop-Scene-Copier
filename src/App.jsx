@@ -45,11 +45,11 @@ function App() {
   /** @type {Types.LayoutFile[]} */
   const [toLayouts, setToLayouts] = useState([]);
   /** @type {React.MutableRefObject<Types.SettingsFile>} */
-  const settings = useRef(null);
+  const settingsRef = useRef(null);
   /** @type {Types.LayoutJson} */
-  const fromJson = useRef(null);
+  const fromJsonRef = useRef(null);
   /** @type {Object} */
-  const gameJson = useRef(null);
+  const gameJsonRef = useRef(null);
 
   const fetchSettings = useCallback(async () => {
     const appDataPath = await appDataDir();
@@ -68,7 +68,7 @@ function App() {
       dir: BaseDirectory.AppData,
     });
 
-    settings.current = await (async () => {
+    settingsRef.current = await (async () => {
       const newData = settingsExists
         ? JSON.parse(await readTextFile(settingsPath))
         : {
@@ -87,8 +87,8 @@ function App() {
 
   const fetchGameData = useCallback(async () => {
     try {
-      gameJson.current = await JSON.parse(
-        await readTextFile(`${settings.current.gamePath}`, {
+      gameJsonRef.current = await JSON.parse(
+        await readTextFile(`${settingsRef.current.gamePath}`, {
           baseDir: BaseDirectory.Document,
         })
       );
@@ -104,7 +104,7 @@ function App() {
 
   const fetchLayouts = useCallback(async () => {
     try {
-      const parsedLayouts = gameJson.current.layouts
+      const parsedLayouts = gameJsonRef.current.layouts
         .map((v) => ({
           name: v.name,
           selected: false,
@@ -175,7 +175,7 @@ function App() {
                   setFromLayouts((fromLayouts) =>
                     fromLayouts.map((from, frIndex) => {
                       if (frIndex === index) {
-                        fromJson.current = gameJson.current.layouts.find(
+                        fromJsonRef.current = gameJsonRef.current.layouts.find(
                           (lyt) => lyt.name === from.name
                         );
 
@@ -228,13 +228,15 @@ function App() {
                 sx={{ width: "100%", height: "100%" }}
                 variant="contained"
                 onClick={async () => {
-                  if (fromJson.current == null) {
+                  if (fromJsonRef.current == null) {
                     const fromPath = createPath([
-                      settings.current.layoutsPath,
+                      settingsRef.current.layoutsPath,
                       fromLayouts.find((fr) => fr.selected).fileName,
                     ]);
 
-                    fromJson.current = JSON.parse(await readTextFile(fromPath));
+                    fromJsonRef.current = JSON.parse(
+                      await readTextFile(fromPath)
+                    );
                   }
 
                   for (const scrpt of scriptOptions) {
@@ -246,25 +248,27 @@ function App() {
                       (v) => v.selected
                     );
 
-                    for (const to of selectedToLayouts) {
-                      const toJson = gameJson.layouts.find(
-                        (lyt) => lyt.name === to.name
+                    for (let i = 0; i < selectedToLayouts.length; i++) {
+                      const toLayout = selectedToLayouts[i];
+                      const toJson = gameJsonRef.current.layouts.find(
+                        (lyt) => lyt.name === toLayout.name
                       );
-                      const newToJson = scrpt.fn(
-                        fromJson.current,
-                        toJson.current
-                      );
+                      const newToJson = scrpt.fn(fromJsonRef.current, toJson);
 
-                      //WIP: need to overwrite the old gameJson, should make a bak as well.
+                      Object.assign(toJson, newToJson);
 
-                      await writeTextFile(
-                        `${settings.current.gamePath}`,
-                        JSON.stringify(newToJson, null, 2)
-                      );
+                      if (i === selectedToLayouts.length - 1) {
+                        console.log("Writing game file!");
+
+                        await writeTextFile(
+                          `${settingsRef.current.gamePath}.bak`,
+                          JSON.stringify(gameJsonRef.current, null, 2)
+                        );
+                      }
                     }
                   }
 
-                  fromJson.current = null;
+                  fromJsonRef.current = null;
                 }}
               >
                 Copy from ➜ to
