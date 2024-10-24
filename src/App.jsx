@@ -27,6 +27,9 @@ import { useTheme } from "@mui/material/styles";
 
 import Grid from "@mui/material/Unstable_Grid2";
 
+// eslint-disable-next-line no-unused-vars, unused-imports/no-unused-imports
+import * as Types from "./type";
+
 function App() {
   const initialOptionState = true;
   const theme = useTheme();
@@ -38,10 +41,16 @@ function App() {
     ].map((option) => ({ ...option, checked: initialOptionState }))
   );
 
+  /** @type {Types.LayoutFile[]} */
   const [fromLayouts, setFromLayouts] = useState([]);
+  /** @type {Types.LayoutFile[]} */
   const [toLayouts, setToLayouts] = useState([]);
+  /** @type {React.MutableRefObject<Types.SettingsFile>} */
   const settingsData = useRef(null);
+  /** @type {Object} */
   const fromData = useRef(null);
+  /** @type {Object} */
+  const gameData = useRef(null);
 
   const fetchSettings = useCallback(async () => {
     const appDataPath = await appDataDir();
@@ -61,22 +70,40 @@ function App() {
     });
 
     settingsData.current = await (async () => {
-      const data = settingsExists
+      const newData = settingsExists
         ? JSON.parse(await readTextFile(settingsPath))
         : {
-            layoutsPath: `C:/Users/MyName/Documents/GDevelop projects/MyGame/layouts`,
+            gamePath: `C:/Users/MyName/Documents/GDevelop projects/MyGame/myGame.json`,
           };
 
-      data.layoutsPath = normalizePath(data.layoutsPath);
+      newData.gamePath = normalizePath(newData.gamePath);
 
       if (!settingsExists) {
-        await writeTextFile(settingsPath, JSON.stringify(data, null, 2));
+        await writeTextFile(settingsPath, JSON.stringify(newData, null, 2));
       }
 
-      return data;
+      return newData;
     })();
   }, []);
 
+  const fetchGameData = useCallback(async () => {
+    try {
+      gameData.current = await JSON.parse(
+        await readTextFile(`${settingsData.current.gamePath}`, {
+          baseDir: BaseDirectory.Document,
+        })
+      );
+    } catch (error) {
+      console.error(
+        "Error reading game .json file. Idk why.",
+        "\n",
+        "\n",
+        error
+      );
+    }
+  }, []);
+
+  // Refactor this so that it gets layouts from the game file rather than a directory :(
   const fetchLayouts = useCallback(async () => {
     try {
       const layoutFiles = await readDir(settingsData.current.layoutsPath, {
@@ -114,7 +141,7 @@ function App() {
       setToLayouts(parsedDataSorted);
     } catch (error) {
       console.error(
-        `Error fetching layouts. Is your settings.json updated?`,
+        "Error fetching layouts. Is your settings.json updated?",
         "\n",
         "\n",
         error
@@ -126,6 +153,7 @@ function App() {
   useEffect(() => {
     (async () => {
       await fetchSettings();
+      await fetchGameData();
       await fetchLayouts();
     })();
   }, [fetchSettings, fetchLayouts]);
