@@ -27,6 +27,10 @@
       "allow": [{ "path": "$DOCUMENT/GDevelop projects/**" }]
     },
     {
+      "identifier": "fs:allow-copy-file",
+      "allow": [{ "path": "$DOCUMENT/GDevelop projects/**" }]
+    },
+    {
       "identifier": "fs:allow-mkdir",
       "allow": [{ "path": "$DATA/*" }]
     },

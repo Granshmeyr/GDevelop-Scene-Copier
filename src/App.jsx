@@ -4,6 +4,7 @@ import {
   exists,
   writeTextFile,
   readTextFile,
+  copyFile,
 } from "@tauri-apps/plugin-fs";
 import { appDataDir } from "@tauri-apps/api/path";
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -260,10 +261,24 @@ function App() {
                       if (i === selectedToLayouts.length - 1) {
                         console.log("Writing game file!");
 
-                        await writeTextFile(
-                          `${settingsRef.current.gamePath}.bak`,
-                          JSON.stringify(gameJsonRef.current, null, 2)
-                        );
+                        try {
+                          await writeTextFile(
+                            `${settingsRef.current.gamePath}.bak`,
+                            JSON.stringify(gameJsonRef.current, null, 2)
+                          );
+
+                          await copyFile(
+                            `${settingsRef.current.gamePath}.bak`,
+                            `${settingsRef.current.gamePath}`
+                          );
+                        } catch (error) {
+                          console.log(
+                            "Some error occured writing the file.",
+                            "\n",
+                            "\n",
+                            error
+                          );
+                        }
                       }
                     }
                   }
