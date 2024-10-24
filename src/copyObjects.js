@@ -1,5 +1,14 @@
 import { isPrefixed, inheritedPrefix, nonInheritedPrefix } from "./common";
+// eslint-disable-next-line no-unused-vars, unused-imports/no-unused-imports
+import * as Types from "./type";
 
+/**
+ * Copies objects from -> to another scene.
+ *
+ * @param {Types.LayoutJson} fromJson - The source JSON object to copy objects from.
+ * @param {Types.LayoutJson} toJson - The destination JSON object to copy objects to.
+ * @returns {void}
+ */
 function copyObjects(fromJson, toJson) {
   // Collect from folders not marked as inherited
   const fromFolders = fromJson.objectsFolderStructure.children

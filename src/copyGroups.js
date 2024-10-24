@@ -1,5 +1,14 @@
 import { nonInheritedPrefix, isPrefixed } from "./common";
+// eslint-disable-next-line no-unused-vars, unused-imports/no-unused-imports
+import * as Types from "./type";
 
+/**
+ * Copies object groups from -> to another scene.
+ *
+ * @param {Types.LayoutJson} fromJson - The source JSON object to copy groups from.
+ * @param {Types.LayoutJson} toJson - The destination JSON object to copy groups to.
+ * @returns {void}
+ */
 function copyGroups(fromJson, toJson) {
   const newToGroups = (() => {
     const { updatedToGroups, toAppendGroups } = toJson.objectsGroups.reduce(

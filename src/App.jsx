@@ -1,6 +1,5 @@
 import {
   BaseDirectory,
-  readDir,
   mkdir,
   exists,
   writeTextFile,
@@ -46,11 +45,11 @@ function App() {
   /** @type {Types.LayoutFile[]} */
   const [toLayouts, setToLayouts] = useState([]);
   /** @type {React.MutableRefObject<Types.SettingsFile>} */
-  const settingsData = useRef(null);
+  const settings = useRef(null);
+  /** @type {Types.LayoutJson} */
+  const fromJson = useRef(null);
   /** @type {Object} */
-  const fromData = useRef(null);
-  /** @type {Object} */
-  const gameData = useRef(null);
+  const gameJson = useRef(null);
 
   const fetchSettings = useCallback(async () => {
     const appDataPath = await appDataDir();
@@ -69,7 +68,7 @@ function App() {
       dir: BaseDirectory.AppData,
     });
 
-    settingsData.current = await (async () => {
+    settings.current = await (async () => {
       const newData = settingsExists
         ? JSON.parse(await readTextFile(settingsPath))
         : {
@@ -88,8 +87,8 @@ function App() {
 
   const fetchGameData = useCallback(async () => {
     try {
-      gameData.current = await JSON.parse(
-        await readTextFile(`${settingsData.current.gamePath}`, {
+      gameJson.current = await JSON.parse(
+        await readTextFile(`${settings.current.gamePath}`, {
           baseDir: BaseDirectory.Document,
         })
       );
@@ -103,45 +102,20 @@ function App() {
     }
   }, []);
 
-  // Refactor this so that it gets layouts from the game file rather than a directory :(
   const fetchLayouts = useCallback(async () => {
     try {
-      const layoutFiles = await readDir(settingsData.current.layoutsPath, {
-        baseDir: BaseDirectory.Document,
-      });
-
-      const parsedData = await Promise.all(
-        layoutFiles
-          .filter((file) => file.isFile && file.name.endsWith(".json"))
-          .map(async (file) => {
-            const data = JSON.parse(
-              await readTextFile(
-                `${settingsData.current.layoutsPath}/${file.name}`,
-                {
-                  baseDir: BaseDirectory.Document,
-                }
-              )
-            );
-
-            const nameLine = data.name;
-
-            return {
-              name: nameLine ? nameLine : `⚠️ INVALID LAYOUT FILE ${file.name}`,
-              fileName: file.name,
-              selected: false,
-            };
-          })
-      );
-
-      const parsedDataSorted = parsedData
-        .slice()
+      const parsedLayouts = gameJson.current.layouts
+        .map((v) => ({
+          name: v.name,
+          selected: false,
+        }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      setFromLayouts(parsedDataSorted);
-      setToLayouts(parsedDataSorted);
+      setFromLayouts(parsedLayouts);
+      setToLayouts(parsedLayouts);
     } catch (error) {
       console.error(
-        "Error fetching layouts. Is your settings.json updated?",
+        "Error fetching layouts. My code is probably wrong.",
         "\n",
         "\n",
         error
@@ -198,25 +172,18 @@ function App() {
                 items={fromLayouts}
                 header={"From layout:"}
                 onSelect={(index) => {
-                  setFromLayouts((fr) =>
-                    fr.map((v, frIndex) => {
+                  setFromLayouts((fromLayouts) =>
+                    fromLayouts.map((from, frIndex) => {
                       if (frIndex === index) {
-                        (async () => {
-                          const fromPath = createPath([
-                            settingsData.current.layoutsPath,
-                            v.fileName,
-                          ]);
+                        fromJson.current = gameJson.current.layouts.find(
+                          (lyt) => lyt.name === from.name
+                        );
 
-                          fromData.current = JSON.parse(
-                            await readTextFile(fromPath)
-                          );
-                        })();
-
-                        return { ...v, selected: true };
+                        return { ...from, selected: true };
                       }
 
                       return {
-                        ...v,
+                        ...from,
                         selected: frIndex === index,
                       };
                     })
@@ -261,46 +228,43 @@ function App() {
                 sx={{ width: "100%", height: "100%" }}
                 variant="contained"
                 onClick={async () => {
-                  if (fromData.current == null) {
+                  if (fromJson.current == null) {
                     const fromPath = createPath([
-                      settingsData.current.layoutsPath,
+                      settings.current.layoutsPath,
                       fromLayouts.find((fr) => fr.selected).fileName,
                     ]);
 
-                    fromData.current = JSON.parse(await readTextFile(fromPath));
+                    fromJson.current = JSON.parse(await readTextFile(fromPath));
                   }
 
-                  for (const s of scriptOptions) {
-                    if (!s.checked) {
+                  for (const scrpt of scriptOptions) {
+                    if (!scrpt.checked) {
                       return;
                     }
 
-                    const selectedTos = toLayouts.filter((v) => v.selected);
+                    const selectedToLayouts = toLayouts.filter(
+                      (v) => v.selected
+                    );
 
-                    for (const to of selectedTos) {
-                      const toPath = createPath([
-                        settingsData.current.layoutsPath,
-                        to.fileName,
-                      ]);
-                      const toStr = await readTextFile(toPath, {
-                        baseDir: BaseDirectory.Document,
-                      });
+                    for (const to of selectedToLayouts) {
+                      const toJson = gameJson.layouts.find(
+                        (lyt) => lyt.name === to.name
+                      );
+                      const newToJson = scrpt.fn(
+                        fromJson.current,
+                        toJson.current
+                      );
 
-                      if (toStr == undefined) {
-                        return;
-                      }
-
-                      const toData = JSON.parse(toStr);
-                      const newToData = s.fn(fromData.current, toData);
+                      //WIP: need to overwrite the old gameJson, should make a bak as well.
 
                       await writeTextFile(
-                        `${toPath}`,
-                        JSON.stringify(newToData, null, 2)
+                        `${settings.current.gamePath}`,
+                        JSON.stringify(newToJson, null, 2)
                       );
                     }
                   }
 
-                  fromData.current = null;
+                  fromJson.current = null;
                 }}
               >
                 Copy from ➜ to
