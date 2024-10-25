@@ -4,6 +4,7 @@ import {
   exists,
   writeTextFile,
   readTextFile,
+  rename,
   copyFile,
 } from "@tauri-apps/plugin-fs";
 import { appDataDir } from "@tauri-apps/api/path";
@@ -240,6 +241,20 @@ function App() {
                     );
                   }
 
+                  try {
+                    await copyFile(
+                      settingsRef.current.gamePath,
+                      `${settingsRef.current.gamePath}.bak`
+                    );
+                  } catch (error) {
+                    console.error(
+                      "Couldn't backup game file for some reason.",
+                      "\n",
+                      "\n",
+                      error
+                    );
+                  }
+
                   for (const scrpt of scriptOptions) {
                     if (!scrpt.checked) {
                       return;
@@ -263,12 +278,12 @@ function App() {
 
                         try {
                           await writeTextFile(
-                            `${settingsRef.current.gamePath}.bak`,
+                            `${settingsRef.current.gamePath}.tmp`,
                             JSON.stringify(gameJsonRef.current, null, 2)
                           );
 
-                          await copyFile(
-                            `${settingsRef.current.gamePath}.bak`,
+                          await rename(
+                            `${settingsRef.current.gamePath}.tmp`,
                             `${settingsRef.current.gamePath}`
                           );
                         } catch (error) {
